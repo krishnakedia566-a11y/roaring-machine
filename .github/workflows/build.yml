@@ -1,0 +1,50 @@
+name: Build Roaring Machine
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.10.2
+
+      - name: Unzip project
+        run: |
+          rm -rf proj
+          mkdir proj
+          unzip -q roaring-machine.zip -d proj
+          ls proj
+
+      - name: Build
+        working-directory: proj
+        run: gradle build --stacktrace --no-daemon
+
+      - name: Save JAR as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: roaring-machine-jar
+          path: proj/build/libs/*.jar
+
+      - name: Publish JAR as release (direct download)
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "build-${{ github.run_number }}" proj/build/libs/*.jar \
+            --title "Roaring Machine build ${{ github.run_number }}" \
+            --notes "Auto-built JAR"
+            
